@@ -25,6 +25,16 @@
   - ベクトルデータ: Amazon Aurora PostgreSQL (pgvector拡張) または Pinecone
 - **ストレージ**: Amazon S3 (画像ファイル保存)
 
+#### フロントエンド (Phase 1: 簡易版)
+- **HTML/CSS/JavaScript** (バニラJS、フレームワークなし)
+- **静的ファイル配信**: FastAPIのStaticFilesミドルウェア
+- **スタイリング**: シンプルなCSS (またはBootstrap CDN)
+- **機能**:
+  - ドラッグ&ドロップ画像アップロード
+  - 画像プレビュー
+  - 検索結果のグリッド表示
+  - 類似度スコア表示
+
 #### インフラ
 - **コンテナ**: Docker
 - **デプロイ**: AWS App Runner
@@ -220,9 +230,88 @@ App Runnerインスタンスロールに以下の権限が必要:
 - RDS: VPC接続権限
 - CloudWatch: ログ書き込み権限
 
-## 7. API仕様
+## 7. フロントエンド仕様 (Phase 1)
 
-### 7.1 認証
+### 7.1 ディレクトリ構成
+```
+/static
+  ├── index.html       # メインページ
+  ├── css
+  │   └── style.css   # スタイルシート
+  └── js
+      └── app.js      # アプリケーションロジック
+```
+
+### 7.2 画面構成
+
+#### メイン画面
+```
++----------------------------------+
+|   画像検索システム                |
++----------------------------------+
+| [画像を登録]  [画像を検索]        |
++----------------------------------+
+|
+| 【登録モード】
+| +----------------------------+
+| | 画像をドラッグ&ドロップ     |
+| | またはクリックして選択      |
+| +----------------------------+
+| 名前: [___________________]
+| 説明: [___________________]
+| タグ: [___________________]
+| [登録する]
+|
+| 【検索モード】
+| +----------------------------+
+| | 検索画像をドラッグ&ドロップ |
+| +----------------------------+
+| [検索する]
+|
+| 【検索結果】
+| +------+ +------+ +------+
+| | 画像1| | 画像2| | 画像3|
+| | 95%  | | 87%  | | 76%  |
+| +------+ +------+ +------+
++----------------------------------+
+```
+
+### 7.3 主要機能
+
+#### 画像登録
+- ドラッグ&ドロップまたはファイル選択
+- 画像プレビュー表示
+- メタデータ入力フォーム
+- 登録完了メッセージ
+
+#### 画像検索
+- ドラッグ&ドロップまたはファイル選択
+- 検索中のローディング表示
+- 結果をグリッド表示（画像+類似度スコア）
+- 画像クリックで詳細表示
+
+### 7.4 FastAPI側の実装
+
+```python
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+
+app = FastAPI()
+
+# 静的ファイル配信
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ルートパスでindex.htmlを返す
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    with open("static/index.html") as f:
+        return f.read()
+```
+
+## 8. API仕様
+
+### 8.1 認証
 すべてのエンドポイントで以下のヘッダーが必要:
 ```
 X-API-Key: {api_key}
@@ -243,13 +332,167 @@ X-API-Key: {api_key}
 - 1IPあたり 100リクエスト/分
 - 超過時: HTTP 429 Too Many Requests
 
-## 8. 開発フェーズ
+## 8. テスト仕様
+
+### 8.1 テスト戦略
+
+ポートフォリオ品質を示すため、主要機能に対する統合テストを実装します。
+
+#### テストフレームワーク
+- **pytest**: テスト実行
+- **pytest-cov**: カバレッジ測定
+- **httpx**: FastAPI TestClient用
+
+#### ディレクトリ構成
+```
+/tests
+  ├── __init__.py
+  ├── conftest.py           # テスト共通設定
+  ├── test_api.py           # API統合テスト
+  └── test_image_processing.py  # 画像処理ユニットテスト
+```
+
+### 8.2 Phase 1: 基本テスト
+
+#### 統合テスト (test_api.py)
+```python
+from fastapi.testclient import TestClient
+
+def test_health_check(client):
+    """ヘルスチェックエンドポイント"""
+    response = client.get("/health")
+    assert response.status_code == 200
+
+def test_upload_image(client, test_image):
+    """画像アップロード"""
+    response = client.post(
+        "/api/images",
+        files={"file": ("test.jpg", test_image, "image/jpeg")},
+        data={"name": "テスト画像"}
+    )
+    assert response.status_code == 200
+    assert "image_id" in response.json()
+
+def test_search_image(client, test_image):
+    """画像検索"""
+    response = client.post(
+        "/api/search",
+        files={"file": ("test.jpg", test_image, "image/jpeg")}
+    )
+    assert response.status_code == 200
+    assert "results" in response.json()
+
+def test_invalid_file_format(client):
+    """不正なファイル形式のエラーハンドリング"""
+    response = client.post(
+        "/api/images",
+        files={"file": ("test.txt", b"not an image", "text/plain")}
+    )
+    assert response.status_code == 400
+```
+
+#### ユニットテスト (test_image_processing.py)
+```python
+def test_extract_features():
+    """画像ベクトル抽出"""
+    image = load_test_image("cat.jpg")
+    vector = extract_features(image)
+    assert vector.shape == (512,)  # 次元数確認
+    assert not np.isnan(vector).any()
+
+def test_calculate_similarity():
+    """類似度計算"""
+    vec1 = np.random.rand(512)
+    vec2 = np.random.rand(512)
+    similarity = calculate_cosine_similarity(vec1, vec2)
+    assert 0 <= similarity <= 1
+```
+
+### 8.3 Phase 3: テスト拡充
+
+- [ ] エラーケースの網羅（大きすぎるファイル、不正な画像など）
+- [ ] pytest-covでカバレッジ測定（目標: 60%以上）
+- [ ] GitHub Actionsでの自動テスト実行
+- [ ] テスト用モック（S3、DBのモック化）
+
+### 8.4 実行方法
+
+```bash
+# すべてのテスト実行
+pytest
+
+# カバレッジ付きで実行
+pytest --cov=app --cov-report=html
+
+# 特定のテストのみ実行
+pytest tests/test_api.py::test_upload_image -v
+```
+
+## 9. 開発用ツール
+
+### 9.1 シードデータ投入スクリプト
+
+開発・テスト用に画像を一括登録するスクリプトを用意します。
+
+#### ディレクトリ構成
+```
+/scripts
+  └── seed_images.py          # シードデータ投入スクリプト
+/seed_data
+  ├── images/                 # サンプル画像フォルダ
+  │   ├── image1.jpg
+  │   ├── image2.jpg
+  │   └── ...
+  └── metadata.json           # メタデータ定義（1回作成）
+```
+
+#### 使用方法
+```bash
+# seed_data/images フォルダ内の画像をすべて登録
+python scripts/seed_images.py
+```
+
+#### 機能
+- `seed_data/images/` 内の全画像を読み込み
+- `seed_data/metadata.json` からメタデータ取得
+- 各画像をS3にアップロード
+- ベクトル化してDBに登録
+
+#### metadata.json 例
+```json
+[
+  {
+    "file_name": "image1.jpg",
+    "name": "サンプル画像1",
+    "description": "テスト用画像",
+    "tags": ["テスト", "サンプル"]
+  },
+  {
+    "file_name": "image2.jpg",
+    "name": "サンプル画像2",
+    "description": "開発用画像",
+    "tags": ["開発", "サンプル"]
+  }
+]
+```
+
+## 9. 開発フェーズ
 
 ### Phase 1: MVP (最小機能)
 - [ ] FastAPI基本セットアップ
 - [ ] 画像アップロード + S3保存
 - [ ] 特徴ベクトル抽出 (ResNet50)
 - [ ] インメモリベクトル検索
+- [ ] 簡易Webフロントエンド
+  - [ ] 画像アップロードUI
+  - [ ] 画像検索UI
+  - [ ] 検索結果表示UI
+- [ ] 開発用データ投入
+  - [ ] シードデータ用スクリプト (scripts/seed_images.py)
+  - [ ] サンプル画像の準備
+- [ ] 基本テスト実装
+  - [ ] API統合テスト (test_api.py)
+  - [ ] 画像処理ユニットテスト (test_image_processing.py)
 - [ ] Dockerfile作成
 - [ ] App Runnerデプロイ
 
@@ -264,6 +507,10 @@ X-API-Key: {api_key}
 - [ ] タグベースフィルタリング
 - [ ] ページネーション
 - [ ] 画像削除機能
+- [ ] テスト拡充
+  - [ ] エラーケーステスト追加
+  - [ ] カバレッジ測定（目標60%以上）
+  - [ ] GitHub Actions CI/CD設定
 
 ### Phase 4: 本番対応
 - [ ] CloudWatch監視設定
