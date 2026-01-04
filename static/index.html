@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画像検索システム</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>画像検索システム</h1>
+            <p class="subtitle">ベクトル類似度による画像検索</p>
+        </header>
+
+        <!-- モード切り替えボタン -->
+        <div class="mode-switcher">
+            <button id="uploadModeBtn" class="mode-btn active">画像を登録</button>
+            <button id="searchModeBtn" class="mode-btn">画像を検索</button>
+        </div>
+
+        <!-- 画像登録モード -->
+        <div id="uploadMode" class="mode-content">
+            <div class="upload-section">
+                <div class="drop-zone" id="uploadDropZone">
+                    <p>画像をドラッグ&ドロップ<br>またはクリックして選択</p>
+                    <input type="file" id="uploadInput" accept="image/*" hidden>
+                </div>
+                <div id="uploadPreview" class="preview hidden"></div>
+
+                <form id="uploadForm" class="hidden">
+                    <div class="form-group">
+                        <label for="imageName">名前（任意）</label>
+                        <input type="text" id="imageName" placeholder="例: 猫の写真">
+                    </div>
+                    <div class="form-group">
+                        <label for="imageDescription">説明（任意）</label>
+                        <textarea id="imageDescription" placeholder="例: かわいい猫の写真"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="imageTags">タグ（任意）</label>
+                        <input type="text" id="imageTags" placeholder="例: 猫, 動物, ペット">
+                    </div>
+                    <button type="submit" class="btn-primary">登録する</button>
+                </form>
+
+                <div id="uploadMessage" class="message hidden"></div>
+            </div>
+        </div>
+
+        <!-- 画像検索モード -->
+        <div id="searchMode" class="mode-content hidden">
+            <div class="search-section">
+                <div class="drop-zone" id="searchDropZone">
+                    <p>検索画像をドラッグ&ドロップ<br>またはクリックして選択</p>
+                    <input type="file" id="searchInput" accept="image/*" hidden>
+                </div>
+                <div id="searchPreview" class="preview hidden"></div>
+                <button id="searchBtn" class="btn-primary hidden">検索する</button>
+                <div id="searchMessage" class="message hidden"></div>
+            </div>
+
+            <div id="searchResults" class="results-section hidden">
+                <h2>検索結果</h2>
+                <div id="resultsGrid" class="results-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
