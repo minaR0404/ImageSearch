@@ -476,7 +476,66 @@ python scripts/seed_images.py
 ]
 ```
 
-## 9. 開発フェーズ
+## 10. プロジェクト構成
+
+### 10.1 ディレクトリ構造
+
+```
+ImageSearch/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                 # FastAPIアプリケーションエントリーポイント
+│   ├── config.py               # 環境変数・設定管理
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── schemas.py          # Pydanticモデル
+│   ├── routers/
+│   │   ├── __init__.py
+│   │   ├── images.py           # 画像登録API
+│   │   └── search.py           # 画像検索API
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── image_processor.py  # 画像処理・ベクトル化
+│   │   ├── s3_service.py       # S3操作
+│   │   └── vector_store.py     # ベクトル検索（Phase 1: インメモリ）
+│   └── utils/
+│       ├── __init__.py
+│       └── validators.py       # バリデーション関数
+├── static/
+│   ├── index.html
+│   ├── css/
+│   │   └── style.css
+│   └── js/
+│       └── app.js
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_api.py
+│   └── test_image_processing.py
+├── scripts/
+│   └── seed_images.py
+├── seed_data/
+│   ├── images/
+│   └── metadata.json
+├── .env.example                # 環境変数テンプレート
+├── .gitignore
+├── Dockerfile
+├── requirements.txt
+├── pytest.ini
+├── README.md
+└── SPECIFICATION.md
+```
+
+### 10.2 主要ファイルの役割
+
+- **app/main.py**: FastAPIアプリのエントリーポイント、ルーター登録
+- **app/config.py**: 環境変数（AWS認証情報、S3バケット名など）
+- **app/services/image_processor.py**: ResNet50による特徴抽出
+- **app/services/vector_store.py**: Phase 1ではインメモリ、Phase 2でDB連携
+- **app/routers/**: APIエンドポイント定義
+- **.env.example**: 必要な環境変数のサンプル
+
+## 11. 開発フェーズ
 
 ### Phase 1: MVP (最小機能)
 - [ ] FastAPI基本セットアップ
