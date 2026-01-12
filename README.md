@@ -1,16 +1,17 @@
 # ImageSearch
 
-画像検索システム - ベクトル類似度による画像検索
+画像管理・文章検索システム
 
 ## 概要
 
-ユーザーが画像をアップロードすると、データベースに登録された画像から類似画像を検索できるシステムです。
-ResNet50を使用した特徴ベクトル抽出とコサイン類似度による検索を実装しています。
+ユーザーが画像をアップロードしてメタデータ（名前、説明、タグ）と共に保存し、文章検索によって関連画像を見つけられるシステムです。
+SQLite FTS5を使った全文検索により、キーワードから素早く画像を検索できます。
 
 ## 技術スタック
 
 - **バックエンド**: FastAPI (Python 3.11+)
-- **画像処理**: PyTorch + torchvision (ResNet50)
+- **画像処理**: Pillow（基本的な画像処理のみ）
+- **データベース**: SQLite + FTS5（全文検索）
 - **ストレージ**: AWS S3
 - **フロントエンド**: HTML/CSS/JavaScript (バニラJS)
 - **コンテナ**: Docker
@@ -21,7 +22,7 @@ ResNet50を使用した特徴ベクトル抽出とコサイン類似度による
 ### 1. リポジトリをクローン
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/minaR0404/ImageSearch.git
 cd ImageSearch
 ```
 
@@ -36,8 +37,6 @@ cp .env.example .env
 `.env`ファイルを編集:
 
 ```env
-AWS_ACCESS_KEY_ID=your_access_key_here
-AWS_SECRET_ACCESS_KEY=your_secret_key_here
 AWS_REGION=ap-northeast-1
 S3_BUCKET_NAME=your-bucket-name
 ```
@@ -51,7 +50,7 @@ S3_BUCKET_NAME=your-bucket-name
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 依存関係をインストール
-uv pip install -r pyproject.toml
+uv sync
 ```
 
 #### pipを使用する場合
@@ -63,7 +62,7 @@ pip install -e .
 ### 4. アプリケーションを起動
 
 ```bash
-uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload
 ```
 
 ブラウザで http://localhost:8000 にアクセスします。
@@ -74,10 +73,10 @@ uvicorn app.main:app --reload
 
 ```bash
 # イメージをビルド
-docker build -t image-search .
+docker build -t imagesearch:latest .
 
 # コンテナを起動
-docker run -p 8000:8000 --env-file .env image-search
+docker run -p 8000:8000 --env-file .env imagesearch:latest
 ```
 
 ブラウザで http://localhost:8000 にアクセスします。
@@ -88,15 +87,17 @@ docker run -p 8000:8000 --env-file .env image-search
 
 1. 「画像を登録」タブを選択
 2. 画像をドラッグ&ドロップまたはクリックして選択
-3. 名前・説明・タグ（任意）を入力
+3. 名前（必須）・説明・タグを入力
 4. 「登録する」ボタンをクリック
 
 ### 画像を検索
 
 1. 「画像を検索」タブを選択
-2. 検索したい画像をドラッグ&ドロップまたはクリックして選択
+2. 検索キーワードを入力（例: 「猫」「風景」「かわいい動物」）
 3. 「検索する」ボタンをクリック
-4. 類似画像が類似度スコア付きで表示されます
+4. 一致する画像が表示されます
+
+検索は**名前、説明、タグ**から全文検索されます。
 
 ## API ドキュメント
 
@@ -110,8 +111,29 @@ FastAPIの自動生成ドキュメントが利用可能です:
 #### `POST /api/images`
 画像をアップロードして登録
 
-#### `POST /api/search`
-類似画像を検索
+**リクエスト:**
+- `file`: 画像ファイル（JPEG, PNG）
+- `name`: 画像名（必須）
+- `description`: 説明（任意）
+- `tags`: タグ（カンマ区切り、任意）
+
+#### `GET /api/search?query=キーワード`
+キーワードで画像を検索
+
+**パラメータ:**
+- `query`: 検索キーワード（必須）
+- `limit`: 取得件数（デフォルト: 10、最大: 100）
+
+#### `GET /api/images`
+画像一覧を取得
+
+**パラメータ:**
+- `page`: ページ番号（デフォルト: 1）
+- `limit`: 1ページあたりの件数（デフォルト: 10）
+- `tag`: タグフィルター（任意）
+
+#### `DELETE /api/images/{image_id}`
+画像を削除
 
 #### `GET /health`
 ヘルスチェック
@@ -127,17 +149,23 @@ ImageSearch/
 │   │   └── schemas.py          # Pydanticモデル
 │   ├── routers/
 │   │   ├── images.py           # 画像登録API
-│   │   └── search.py           # 画像検索API
+│   │   └── search.py           # 文章検索API
 │   └── services/
-│       ├── image_processor.py  # 画像処理・ベクトル化
-│       ├── s3_service.py       # S3操作
-│       └── vector_store.py     # ベクトル検索
+│       ├── db_service.py       # SQLite操作（FTS5検索）
+│       ├── image_service.py    # 画像処理
+│       └── s3_service.py       # S3操作
 ├── static/
 │   ├── index.html
 │   ├── css/
+│   │   └── style.css
 │   └── js/
+│       └── app.js
+├── data/
+│   └── images.db               # SQLiteデータベース
 ├── Dockerfile
+├── deploy-to-ecr.sh            # ECRデプロイスクリプト
 ├── pyproject.toml
+├── SPECIFICATION.md            # 詳細仕様書
 └── README.md
 ```
 
@@ -153,12 +181,38 @@ pytest
 pytest --cov=app --cov-report=html
 ```
 
+### ローカル開発
+
+```bash
+# 開発サーバー起動（ホットリロード有効）
+uv run uvicorn app.main:app --reload
+
+# 依存関係の追加
+uv add package-name
+
+# 依存関係の更新
+uv sync
+```
+
+## 特徴
+
+### 軽量・高速
+- PyTorch不要で起動が高速
+- Dockerイメージサイズ: 約500MB（従来の数GBから大幅削減）
+- SQLite FTS5による高速全文検索
+
+### シンプルな構成
+- 外部DBサーバー不要（SQLite使用）
+- セットアップが簡単
+- メンテナンスが容易
+
 ## ライセンス
 
 MIT License
 
 ## 今後の予定
 
-- Phase 2: RDS PostgreSQL + pgvectorの統合
-- Phase 3: API認証、ページネーション
-- Phase 4: 本番環境対応、CI/CD
+- Phase 2: タグベースフィルタリング、ページネーション改善
+- Phase 3: RDS PostgreSQLへの移行（本番運用時）
+- Phase 4: ユーザー認証、マルチテナント対応
+- Phase 5: より高度な検索（Elasticsearch統合）
