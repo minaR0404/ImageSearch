@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>画像検索システム</title>
+    <title>画像管理・検索システム</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>画像検索システム</h1>
-            <p class="subtitle">ベクトル類似度による画像検索</p>
+            <h1>画像管理・検索システム</h1>
+            <p class="subtitle">文章検索で画像を見つける</p>
         </header>
 
         <!-- モード切り替えボタン -->
@@ -30,16 +30,17 @@
 
                 <form id="uploadForm" class="hidden">
                     <div class="form-group">
-                        <label for="imageName">名前（任意）</label>
-                        <input type="text" id="imageName" placeholder="例: 猫の写真">
+                        <label for="imageName">名前 <span class="required">*</span></label>
+                        <input type="text" id="imageName" placeholder="例: 猫の写真" required>
                     </div>
                     <div class="form-group">
                         <label for="imageDescription">説明（任意）</label>
-                        <textarea id="imageDescription" placeholder="例: かわいい猫の写真"></textarea>
+                        <textarea id="imageDescription" placeholder="例: かわいい三毛猫の写真"></textarea>
                     </div>
                     <div class="form-group">
                         <label for="imageTags">タグ（任意）</label>
                         <input type="text" id="imageTags" placeholder="例: 猫, 動物, ペット">
+                        <small>カンマ区切りで複数入力可能</small>
                     </div>
                     <button type="submit" class="btn-primary">登録する</button>
                 </form>
@@ -51,17 +52,21 @@
         <!-- 画像検索モード -->
         <div id="searchMode" class="mode-content hidden">
             <div class="search-section">
-                <div class="drop-zone" id="searchDropZone">
-                    <p>検索画像をドラッグ&ドロップ<br>またはクリックして選択</p>
-                    <input type="file" id="searchInput" accept="image/*" hidden>
+                <h2>キーワードで検索</h2>
+                <div class="search-form">
+                    <input
+                        type="text"
+                        id="searchQuery"
+                        placeholder="例: 猫, かわいい動物, 風景写真..."
+                        class="search-input"
+                    >
+                    <button id="searchBtn" class="btn-primary">検索する</button>
                 </div>
-                <div id="searchPreview" class="preview hidden"></div>
-                <button id="searchBtn" class="btn-primary hidden">検索する</button>
                 <div id="searchMessage" class="message hidden"></div>
             </div>
 
             <div id="searchResults" class="results-section hidden">
-                <h2>検索結果</h2>
+                <h2>検索結果 (<span id="resultCount">0</span>件)</h2>
                 <div id="resultsGrid" class="results-grid"></div>
             </div>
         </div>

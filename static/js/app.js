@@ -79,9 +79,15 @@ uploadForm.addEventListener('submit', async (e) => {
         return;
     }
 
+    const name = document.getElementById('imageName').value.trim();
+    if (!name) {
+        showMessage(uploadMessage, '名前は必須です', 'error');
+        return;
+    }
+
     const formData = new FormData();
     formData.append('file', uploadFile);
-    formData.append('name', document.getElementById('imageName').value);
+    formData.append('name', name);
     formData.append('description', document.getElementById('imageDescription').value);
     formData.append('tags', document.getElementById('imageTags').value);
 
@@ -107,81 +113,37 @@ uploadForm.addEventListener('submit', async (e) => {
     }
 });
 
-// === 画像検索モード ===
-const searchDropZone = document.getElementById('searchDropZone');
-const searchInput = document.getElementById('searchInput');
-const searchPreview = document.getElementById('searchPreview');
+// === 画像検索モード（文章検索） ===
+const searchQuery = document.getElementById('searchQuery');
 const searchBtn = document.getElementById('searchBtn');
 const searchMessage = document.getElementById('searchMessage');
 const searchResults = document.getElementById('searchResults');
 const resultsGrid = document.getElementById('resultsGrid');
+const resultCount = document.getElementById('resultCount');
 
-let searchFile = null;
-
-// ドロップゾーンのクリック
-searchDropZone.addEventListener('click', () => searchInput.click());
-
-// ファイル選択
-searchInput.addEventListener('change', (e) => {
-    handleSearchFile(e.target.files[0]);
-});
-
-// ドラッグ&ドロップ
-searchDropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    searchDropZone.classList.add('drag-over');
-});
-
-searchDropZone.addEventListener('dragleave', () => {
-    searchDropZone.classList.remove('drag-over');
-});
-
-searchDropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    searchDropZone.classList.remove('drag-over');
-    handleSearchFile(e.dataTransfer.files[0]);
-});
-
-function handleSearchFile(file) {
-    if (!file || !file.type.startsWith('image/')) {
-        showMessage(searchMessage, '画像ファイルを選択してください', 'error');
-        return;
+// Enterキーで検索
+searchQuery.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        searchBtn.click();
     }
-
-    searchFile = file;
-
-    // プレビュー表示
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        searchPreview.innerHTML = `<img src="${e.target.result}" alt="Search">`;
-        searchPreview.classList.remove('hidden');
-        searchBtn.classList.remove('hidden');
-        searchMessage.classList.add('hidden');
-        searchResults.classList.add('hidden');
-    };
-    reader.readAsDataURL(file);
-}
+});
 
 // 検索実行
 searchBtn.addEventListener('click', async () => {
-    if (!searchFile) {
-        showMessage(searchMessage, '画像を選択してください', 'error');
+    const query = searchQuery.value.trim();
+
+    if (!query) {
+        showMessage(searchMessage, '検索キーワードを入力してください', 'error');
         return;
     }
-
-    const formData = new FormData();
-    formData.append('file', searchFile);
 
     // ローディング表示
     searchBtn.disabled = true;
     searchBtn.innerHTML = '<span class="loading"></span> 検索中...';
+    searchMessage.classList.add('hidden');
 
     try {
-        const response = await fetch('/api/search', {
-            method: 'POST',
-            body: formData
-        });
-
+        const response = await fetch(`/api/search?query=${encodeURIComponent(query)}&limit=20`);
         const data = await response.json();
 
         if (response.ok) {
@@ -189,9 +151,11 @@ searchBtn.addEventListener('click', async () => {
             searchMessage.classList.add('hidden');
         } else {
             showMessage(searchMessage, `エラー: ${data.detail}`, 'error');
+            searchResults.classList.add('hidden');
         }
     } catch (error) {
         showMessage(searchMessage, `エラー: ${error.message}`, 'error');
+        searchResults.classList.add('hidden');
     } finally {
         searchBtn.disabled = false;
         searchBtn.textContent = '検索する';
@@ -203,26 +167,26 @@ function displaySearchResults(results) {
 
     if (results.length === 0) {
         showMessage(searchMessage, '検索結果が見つかりませんでした', 'error');
+        searchResults.classList.add('hidden');
         return;
     }
+
+    resultCount.textContent = results.length;
 
     results.forEach(result => {
         const resultItem = document.createElement('div');
         resultItem.className = 'result-item';
 
-        const similarityPercent = (result.similarity_score * 100).toFixed(1);
-
-        const tags = result.metadata.tags && result.metadata.tags.length > 0
-            ? result.metadata.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+        const tags = result.tags
+            ? result.tags.split(',').map(tag => `<span class="tag">${tag.trim()}</span>`).join('')
             : '';
 
         resultItem.innerHTML = `
-            <img src="${result.image_url}" alt="${result.metadata.name || '画像'}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22250%22 height=%22200%22><rect fill=%22%23ddd%22 width=%22250%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 fill=%22%23999%22>No Image</text></svg>'">
+            <img src="${result.image_url}" alt="${result.name}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22250%22 height=%22200%22><rect fill=%22%23ddd%22 width=%22250%22 height=%22200%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 fill=%22%23999%22>No Image</text></svg>'">
             <div class="result-info">
-                <div class="similarity-score">${similarityPercent}% 一致</div>
                 <div class="result-metadata">
-                    ${result.metadata.name ? `<h3>${result.metadata.name}</h3>` : ''}
-                    ${result.metadata.description ? `<p>${result.metadata.description}</p>` : ''}
+                    <h3>${result.name}</h3>
+                    ${result.description ? `<p>${result.description}</p>` : ''}
                     ${tags ? `<div class="result-tags">${tags}</div>` : ''}
                 </div>
             </div>

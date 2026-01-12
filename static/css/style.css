@@ -131,6 +131,17 @@ h1 {
     font-weight: 600;
 }
 
+.form-group .required {
+    color: #e74c3c;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 4px;
+    color: #999;
+    font-size: 0.85rem;
+}
+
 .form-group input,
 .form-group textarea {
     width: 100%;
@@ -150,6 +161,37 @@ h1 {
 .form-group textarea {
     resize: vertical;
     min-height: 80px;
+}
+
+/* 文章検索フォーム */
+.search-section h2 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.search-form {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 14px 20px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.search-form .btn-primary {
+    width: auto;
+    padding: 14px 32px;
 }
 
 /* ボタン */

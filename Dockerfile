@@ -5,8 +5,6 @@ WORKDIR /app
 # システムパッケージの更新と必要なライブラリをインストール
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    libgl1 \
-    libglib2.0-0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -25,6 +23,9 @@ RUN uv sync --no-dev
 # アプリケーションコードをコピー
 COPY app ./app
 COPY static ./static
+
+# データベースディレクトリ作成
+RUN mkdir -p /app/data
 
 # ポート8000を公開
 EXPOSE 8000

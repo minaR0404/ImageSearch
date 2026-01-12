@@ -1,43 +1,58 @@
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from uuid import UUID, uuid4
 
 
 class ImageMetadata(BaseModel):
-    """Image metadata for upload"""
-    name: Optional[str] = Field(None, description="Image name")
-    description: Optional[str] = Field(None, description="Image description")
-    tags: Optional[List[str]] = Field(default_factory=list, description="Image tags")
+    """画像メタデータ（アップロード用）"""
+    name: str = Field(..., description="画像名（必須）")
+    description: Optional[str] = Field(None, description="画像の説明")
+    tags: Optional[str] = Field(None, description="タグ（カンマ区切り）")
 
 
 class ImageUploadResponse(BaseModel):
-    """Response for image upload"""
-    image_id: UUID = Field(default_factory=uuid4, description="Unique image ID")
-    image_url: str = Field(..., description="S3 URL of the uploaded image")
-    message: str = Field(default="Image uploaded successfully")
+    """画像アップロードのレスポンス"""
+    image_id: str = Field(..., description="画像ID")
+    image_url: str = Field(..., description="S3画像URL")
+    message: str = Field(default="画像を登録しました")
 
 
-class SearchResult(BaseModel):
-    """Single search result"""
-    image_id: UUID
+class ImageDetail(BaseModel):
+    """画像詳細情報"""
+    image_id: str
     image_url: str
-    similarity_score: float = Field(..., ge=0.0, le=1.0, description="Similarity score (0-1)")
-    metadata: ImageMetadata
+    file_name: str
+    file_size: int
+    mime_type: str
+    width: Optional[int] = None
+    height: Optional[int] = None
+    name: str
+    description: Optional[str] = None
+    tags: Optional[str] = None
+    created_at: str
+    updated_at: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
-    """Response for image search"""
-    results: List[SearchResult] = Field(default_factory=list)
-    total: int = Field(..., description="Total number of results")
+    """文章検索のレスポンス"""
+    results: List[ImageDetail] = Field(default_factory=list)
+    total: int = Field(..., description="結果の総数")
+
+
+class ImageListResponse(BaseModel):
+    """画像一覧のレスポンス"""
+    images: List[ImageDetail] = Field(default_factory=list)
+    total: int = Field(..., description="総画像数")
+    page: int = Field(..., description="現在のページ")
+    limit: int = Field(..., description="1ページあたりの件数")
 
 
 class HealthResponse(BaseModel):
-    """Health check response"""
+    """ヘルスチェックレスポンス"""
     status: str = "healthy"
     version: str = "0.1.0"
 
 
 class ErrorResponse(BaseModel):
-    """Error response"""
-    error: dict = Field(..., description="Error details")
+    """エラーレスポンス"""
+    error: dict = Field(..., description="エラー詳細")
