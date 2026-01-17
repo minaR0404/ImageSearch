@@ -13,6 +13,9 @@ class Settings:
     AWS_REGION: str = os.getenv("AWS_REGION", "ap-northeast-1")
     S3_BUCKET_NAME: str = os.getenv("S3_BUCKET_NAME", "image-search-bucket")
 
+    # Database Configuration
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///data/images.db")
+
     # Application Configuration
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"

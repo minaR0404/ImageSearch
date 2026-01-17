@@ -62,10 +62,20 @@ function handleUploadFile(file) {
     // プレビュー表示
     const reader = new FileReader();
     reader.onload = (e) => {
-        uploadPreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        uploadPreview.innerHTML = `
+            <div class="preview-container">
+                <img src="${e.target.result}" alt="Preview">
+                <p class="preview-hint">画像をクリックして別の画像を選択</p>
+            </div>
+        `;
         uploadPreview.classList.remove('hidden');
         uploadForm.classList.remove('hidden');
+        uploadDropZone.classList.add('hidden'); // ドロップゾーンを非表示
         uploadMessage.classList.add('hidden');
+
+        // プレビュー画像をクリックで再選択（既存のリスナーを削除してから追加）
+        const newPreviewContainer = uploadPreview.querySelector('.preview-container');
+        newPreviewContainer.addEventListener('click', () => uploadInput.click());
     };
     reader.readAsDataURL(file);
 }
@@ -104,6 +114,7 @@ uploadForm.addEventListener('submit', async (e) => {
             uploadForm.reset();
             uploadPreview.classList.add('hidden');
             uploadForm.classList.add('hidden');
+            uploadDropZone.classList.remove('hidden'); // ドロップゾーンを再表示
             uploadFile = null;
         } else {
             showMessage(uploadMessage, `エラー: ${data.detail}`, 'error');
