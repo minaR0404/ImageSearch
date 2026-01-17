@@ -5,15 +5,24 @@
 ## 概要
 
 ユーザーが画像をアップロードしてメタデータ（名前、説明、タグ）と共に保存し、文章検索によって関連画像を見つけられるシステムです。
-SQLite FTS5を使った全文検索により、キーワードから素早く画像を検索できます。
+全文検索により、キーワードから素早く画像を検索できます。
+
+## デモ
+
+**本番環境**: https://t3sswmnpbq.ap-northeast-1.awsapprunner.com/
+
+- AWS App Runnerでホスティング
+- PostgreSQL (AWS RDS) でデータ永続化
+- 画像はAWS S3に保存
 
 ## 技術スタック
 
 - **バックエンド**: FastAPI (Python 3.11+)
-- **画像処理**: Pillow（基本的な画像処理のみ）
-- **データベース**: SQLite + FTS5（全文検索）
+- **画像処理**: Pillow
+- **データベース**: PostgreSQL / SQLite + FTS5（全文検索）
 - **ストレージ**: AWS S3
 - **フロントエンド**: HTML/CSS/JavaScript (バニラJS)
+- **インフラ**: AWS App Runner + RDS PostgreSQL + S3
 - **コンテナ**: Docker
 - **パッケージ管理**: uv
 
@@ -37,8 +46,16 @@ cp .env.example .env
 `.env`ファイルを編集:
 
 ```env
+# AWS設定
 AWS_REGION=ap-northeast-1
 S3_BUCKET_NAME=your-bucket-name
+
+# データベース設定
+# ローカル開発（SQLite）
+DATABASE_URL=sqlite:///data/images.db
+
+# 本番環境（PostgreSQL）
+# DATABASE_URL=postgresql://username:password@host:5432/database_name
 ```
 
 ### 3. 依存関係をインストール
@@ -80,6 +97,14 @@ docker run -p 8000:8000 --env-file .env imagesearch:latest
 ```
 
 ブラウザで http://localhost:8000 にアクセスします。
+
+### ECRへのデプロイ
+
+AWS ECRにプッシュして、App Runnerにデプロイ:
+
+```bash
+./deploy-to-ecr.sh
+```
 
 ## 使い方
 
@@ -198,21 +223,36 @@ uv sync
 
 ### 軽量・高速
 - PyTorch不要で起動が高速
-- Dockerイメージサイズ: 約500MB（従来の数GBから大幅削減）
-- SQLite FTS5による高速全文検索
+- Dockerイメージサイズ: 約500MB
+- 全文検索による高速検索
+
+### 柔軟なデータベース対応
+- **ローカル開発**: SQLite + FTS5（外部DB不要）
+- **本番環境**: PostgreSQL（AWS RDS）
+- 環境変数で自動切り替え
+
+### 画像選択UIの改善
+- 画像選択後はプレビューのみ表示
+- クリックで再選択が可能
+- 直感的な操作性
 
 ### シンプルな構成
-- 外部DBサーバー不要（SQLite使用）
 - セットアップが簡単
 - メンテナンスが容易
+- AWS App Runnerで簡単デプロイ
 
 ## ライセンス
 
 MIT License
 
+## 実装済み機能
+
+- ✅ Phase 1: 画像アップロード・文章検索機能（MVP）
+- ✅ Phase 2: PostgreSQL対応（本番環境）
+- ✅ UI改善: 画像選択後のプレビュー表示
+
 ## 今後の予定
 
-- Phase 2: タグベースフィルタリング、ページネーション改善
-- Phase 3: RDS PostgreSQLへの移行（本番運用時）
+- Phase 3: タグベースフィルタリング強化
 - Phase 4: ユーザー認証、マルチテナント対応
-- Phase 5: より高度な検索（Elasticsearch統合）
+- Phase 5: より高度な検索（類似画像検索など）
